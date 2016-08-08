@@ -1,7 +1,7 @@
 {
     "name": "Rememeber",
     "description": "Basically bookmarks as a chrome extension",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "permissions": [
         "contextMenus",
         "storage"

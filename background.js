@@ -27,8 +27,10 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
             if (!args.obj.savedLinks) {
               args.obj.savedLinks = {tags: {}, links: {}};
             }
-            args.obj.savedLinks.tags['tag_' + tag] = src;
-            args.obj.savedLinks.links['src_' + src] = tag;
+            args.obj.savedLinks.tags['tag_' + tag] = args.obj.savedLinks.tags['tag_' + tag] || [];
+            args.obj.savedLinks.links['src_' + src] = args.obj.savedLinks.links['src_' + src] || [];
+            args.obj.savedLinks.tags['tag_' + tag].push(src);
+            args.obj.savedLinks.links['src_' + src].push(tag);
           }
           chrome.storage.sync.set(args.obj);
         });
@@ -37,7 +39,8 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
   // Paste link
   if (info.menuItemId && info.menuItemId.match(/tag_/)) {
     getFromStorageThen(function(args) {
-      var src = args.savedLinks.tags['tag_' + info.menuItemId.replace(/tag_/, '')];
+      var srcs = args.savedLinks.tags['tag_' + info.menuItemId.replace(/tag_/, '')];
+      var src = srcs[Math.floor(Math.random() * srcs.length)]
       chrome.tabs.sendMessage(tab.id, {
         src: src,
         type: 'insert'
