@@ -48,15 +48,6 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
   }
 });
 
-// Paste logic
-var storedData = getFromStorageThen(function(args) {
-  for (var i = 0; i < args.tags.length; i++) {
-    var tag = args.tags[i];
-    addTagToPasteListener(tag);
-  }
-  return args.obj;
-});
-
 function addTagToPasteListener(tag) {
   chrome.contextMenus.create({
     id: 'tag_' + tag,
