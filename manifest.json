@@ -1,0 +1,24 @@
+{
+    "name": "Rememeber",
+    "description": "Basically bookmarks as a chrome extension",
+    "version": "0.0.1",
+    "permissions": [
+        "contextMenus",
+        "storage"
+    ],
+    "background": {
+        "persistent": false,
+        "scripts": [
+            "background.js"
+        ]
+    },
+    "content_scripts": [{
+        "matches": [
+            "http://*/*",
+            "https://*/*"
+        ],
+        "js": ["content.js"],
+        "run_at": "document_end"
+    }],
+    "manifest_version": 2
+}
