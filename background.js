@@ -1,57 +1,59 @@
+'use strict'
 // This code is trash. Do not use as a reference. You have been warned.
 
-var contexts = ['image', 'video', 'link'];
+let contexts = ['image', 'video', 'link'];
+
 // Copy logic
 chrome.contextMenus.create({
   id: 'Rememeber this',
   title: 'Rememeber this',
   contexts: contexts
-});
+})
 
 // Listeners
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
   // Copy link
   if (info.menuItemId && info.menuItemId == 'Rememeber this') {
-    var src = info.srcUrl || info.linkUrl;
+    let url = info.srcUrl || info.linkUrl
     chrome.tabs.sendMessage(tab.id, {
-        type: 'prompt'
-      }, function(response) {
-        var tags = response.split(',');
-        for (var i = 0; i < tags.length; i++) {
-          var tag = tags[i].trim();
-          addTagToPasteListener(tag);
+      type: 'prompt'
+    }, function(response) {
+      let tags = response.split(',')
+      for (let i = 0; i < tags.length; i++) {
+        let tag = tags[i].trim()
+        if (!database.hasTag(tag)) {
+          addContextButton(tag)
         }
-        getFromStorageThen(function(args) {
-          for (var i = 0; i < tags.length; i++) {
-            var tag = tags[i];
-            if (!args.obj.savedLinks) {
-              args.obj.savedLinks = {tags: {}, links: {}};
-            }
-            args.obj.savedLinks.tags['tag_' + tag] = args.obj.savedLinks.tags['tag_' + tag] || [];
-            args.obj.savedLinks.links['src_' + src] = args.obj.savedLinks.links['src_' + src] || [];
-            args.obj.savedLinks.tags['tag_' + tag].push(src);
-            args.obj.savedLinks.links['src_' + src].push(tag);
-          }
-          chrome.storage.sync.set(args.obj);
-        });
-      });
+        database.setTag(tag, url)
+      }
+    });
   }
   // Paste link
-  if (info.menuItemId && info.menuItemId.match(/tag_/)) {
-    getFromStorageThen(function(args) {
-      var srcs = args.savedLinks.tags['tag_' + info.menuItemId.replace(/tag_/, '')];
-      var src = srcs[Math.floor(Math.random() * srcs.length)]
-      chrome.tabs.sendMessage(tab.id, {
-        src: src,
-        type: 'insert'
-      }, function(response) {
-        console.log(response);
-      });
-    });
+  if (info.menuItemId &&
+    info.menuItemId.match(/tag_/) &&
+    database.hasTag(info.menuItemId.replace('tag_', ''))) {
+    let tag = info.menuItemId.replace('tag_', '')
+    let url = database.getRandomUrlFromTag(tag)
+    let type = 'insert'
+    let options = {
+      url,
+      type
+    }
+    chrome.tabs.sendMessage(tab.id, options, (resp) => {
+      console.log(resp)
+    })
   }
 });
 
-function addTagToPasteListener(tag) {
+function updateAllContextButtons() {
+  let tags = database.getTags();
+  for(let i = 0; i < tags.length; i++) {
+    let tag = tag[i]
+    addContextButton(tag)
+  }
+}
+
+function addContextButton(tag) {
   chrome.contextMenus.create({
     id: 'tag_' + tag,
     title: 'Paste ' + tag,
@@ -59,13 +61,49 @@ function addTagToPasteListener(tag) {
   });
 }
 
-function getFromStorageThen(callback) {
-  chrome.storage.sync.get('savedLinks', function(obj) {
-    var savedLinks = {};
-    if (obj.savedLinks) {
-      savedLinks = obj.savedLinks;
+function Database() {
+  this.tags = {}; // This contains the tags as keys
+  this.urls = {}; // This contains the URLs as keys
+
+  this.getUrls = function() {
+    return Object.keys(this.urls)
+  }
+
+  this.getTags = function() {
+    return Object.keys(this.tags)
+  }
+
+  this.hasTag = function(tag) {
+    return this.getTags().indexOf(tag) != -1
+  }
+
+  this.getRandomUrlFromTag = function(tag) {
+    let urls = this.tags[tag]
+    let randomUrl = urls[Math.floor(Math.random() * urls.length)]
+    return randomUrl
+  }
+
+  this.setUrl = function(url, tags) {
+    if(typeof tags != 'array') {
+      tags = [tags]
     }
-    var tags = Object.keys(savedLinks);
-    return callback({obj: obj, savedLinks: savedLinks, tags: tags});
-  });
+    if(!this.urls[url]) {
+      this.urls[url] = []
+    }
+
+    this.urls[url] = this.urls[url].concat(tags)
+  }
+
+  this.setTag = function(tag, urls) {
+    if (typeof urls != 'array') {
+      urls = [urls]
+    }
+    if(!this.tags[tag]) {
+      this.tags[tag] = []
+    }
+
+    this.tags[tag] = this.tags[tag].concat(urls)
+  }
 }
+
+let database = new Database()
